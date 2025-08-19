@@ -2,6 +2,7 @@ import './App.css'
 import React from 'react'
 import TopNav from './shared/TopNav.jsx'
 import { useAnalyticsInit } from './hooks/useAnalytics'
+import profileImage from '/image/moto G.jpg'
 
 function Section({ id, title, children, className = '' }) {
 	return (
@@ -25,7 +26,7 @@ function IconWrapper({ children, className = '' }) {
 }
 
 function HeroImage() {
-	const sources = ['/Moto G.jpg', '/image/Moto G.jpg', '/images/Moto G.jpg']
+	const sources = [profileImage, '/moto G.jpg', '/image/moto G.jpg']
 	const [index, setIndex] = React.useState(0)
 	const src = sources[index] || sources[0]
 	return (
@@ -46,6 +47,7 @@ function HeroImage() {
 					loading="eager"
 					decoding="async"
 					onError={() => setIndex((i) => (i + 1 < sources.length ? i + 1 : i))}
+					onLoad={() => console.log('Image loaded successfully:', src)}
 				/>
 			</div>
 			
