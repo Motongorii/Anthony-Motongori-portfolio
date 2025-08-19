@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .image-test { margin: 20px 0; }
+        img { max-width: 300px; border: 2px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Image Loading Test</h1>
+    
+    <div class="image-test">
+        <h3>Test 1: profile-image.jpg</h3>
+        <img src="/profile-image.jpg" alt="Profile Image" 
+             onload="this.nextElementSibling.textContent='✅ Loaded successfully'; this.nextElementSibling.className='success'"
+             onerror="this.nextElementSibling.textContent='❌ Failed to load'; this.nextElementSibling.className='error'">
+        <p>Loading...</p>
+    </div>
+    
+    <div class="image-test">
+        <h3>Test 2: moto G.jpg</h3>
+        <img src="/moto G.jpg" alt="Moto G" 
+             onload="this.nextElementSibling.textContent='✅ Loaded successfully'; this.nextElementSibling.className='success'"
+             onerror="this.nextElementSibling.textContent='❌ Failed to load'; this.nextElementSibling.className='error'">
+        <p>Loading...</p>
+    </div>
+    
+    <div class="image-test">
+        <h3>Test 3: image/moto G.jpg</h3>
+        <img src="/image/moto G.jpg" alt="Image Moto G" 
+             onload="this.nextElementSibling.textContent='✅ Loaded successfully'; this.nextElementSibling.className='success'"
+             onerror="this.nextElementSibling.textContent='❌ Failed to load'; this.nextElementSibling.className='error'">
+        <p>Loading...</p>
+    </div>
+    
+    <script>
+        console.log('Testing image accessibility...');
+        console.log('Current location:', window.location.href);
+        console.log('Public assets should be accessible from:', window.location.origin);
+    </script>
+</body>
+</html>

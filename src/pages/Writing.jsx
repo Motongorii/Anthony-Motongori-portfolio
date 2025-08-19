@@ -1,7 +1,8 @@
 import '../App.css'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import TopNav from '../shared/TopNav.jsx'
 import { usePageView, useInteractionTracking } from '../hooks/useAnalytics'
+import { commentsAPI, likesAPI } from '../utils/api'
 
 export default function Writing() {
 	// Track page view and interactions
@@ -9,6 +10,8 @@ export default function Writing() {
 	const { trackClick, trackButtonPress } = useInteractionTracking();
 	
 	const [selectedCategory, setSelectedCategory] = useState('all')
+	const [notification, setNotification] = useState({ message: '', type: '', show: false })
+	const [isLoading, setIsLoading] = useState(true)
 	const [blogPosts, setBlogPosts] = useState([
 		{
 			id: 1,
@@ -20,23 +23,8 @@ export default function Writing() {
 			author: 'Anthony',
 			date: new Date('2024-01-15').toLocaleDateString(),
 			featured: true,
-			likes: 12,
-			comments: [
-				{
-					id: 1,
-					author: 'Sarah Chen',
-					content: 'This resonates so much with me! I\'ve always felt that coding and writing poetry share a similar creative rhythm.',
-					date: new Date('2024-01-16').toLocaleDateString(),
-					time: '2:30 PM'
-				},
-				{
-					id: 2,
-					author: 'Marcus Rodriguez',
-					content: 'Beautiful analogy. The flow state comparison is spot on - both require that perfect balance of focus and creativity.',
-					date: new Date('2024-01-17').toLocaleDateString(),
-					time: '11:15 AM'
-				}
-			]
+			likes: 0,
+			comments: []
 		},
 		{
 			id: 2,
@@ -48,16 +36,8 @@ export default function Writing() {
 			author: 'Anthony',
 			date: new Date('2024-01-10').toLocaleDateString(),
 			featured: false,
-			likes: 8,
-			comments: [
-				{
-					id: 1,
-					author: 'Emma Thompson',
-					content: 'This is exactly what I needed to read today. Reminds me why I got into UX design in the first place.',
-					date: new Date('2024-01-11').toLocaleDateString(),
-					time: '3:45 PM'
-				}
-			]
+			likes: 0,
+			comments: []
 		},
 		{
 			id: 3,
@@ -69,48 +49,142 @@ export default function Writing() {
 			author: 'Anthony',
 			date: new Date('2024-01-05').toLocaleDateString(),
 			featured: true,
-			likes: 15,
-			comments: [
-				{
-					id: 1,
-					author: 'David Kim',
-					content: 'As a technical writer, this hits home. I\'ve been trying to incorporate more narrative elements into my docs.',
-					date: new Date('2024-01-06').toLocaleDateString(),
-					time: '9:20 AM'
-				},
-				{
-					id: 2,
-					author: 'Lisa Wang',
-					content: 'Love the storytelling approach! It makes technical concepts so much more engaging and memorable.',
-					date: new Date('2024-01-07').toLocaleDateString(),
-					time: '4:10 PM'
-				}
-			]
+			likes: 0,
+			comments: []
 		}
 	])
 
+	// Load comments and likes from backend on component mount
+	useEffect(() => {
+		loadAllPostData();
+	}, []);
+
+	// Function to load all post data (comments and likes) from backend
+	const loadAllPostData = async () => {
+		try {
+			setIsLoading(true);
+			for (const post of blogPosts) {
+				await loadPostData(post.id);
+			}
+		} catch (error) {
+			console.error('Error loading post data:', error);
+			showNotification('Failed to load some post data. Please refresh the page.', 'error');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	// Function to load data for a specific post
+	const loadPostData = async (postId) => {
+		try {
+			// Load comments
+			const comments = await commentsAPI.getComments(postId);
+			
+			// Load like count
+			const likeData = await likesAPI.getLikeCount(postId);
+			
+			// Update the post with real data
+			setBlogPosts(prev => prev.map(post => 
+				post.id === postId 
+					? { 
+						...post, 
+						comments: comments || [],
+						likes: likeData?.count || 0
+					}
+					: post
+			));
+		} catch (error) {
+			console.error(`Error loading data for post ${postId}:`, error);
+			// If it's a network error, the backend might not be running
+			if (error.message.includes('fetch')) {
+				console.log('Backend might not be running. Comments and likes will not persist.');
+			}
+		}
+	};
+
 	// Like and comment functions
-	const handleLike = (postId) => {
-		setBlogPosts(prev => prev.map(post => 
-			post.id === postId ? { ...post, likes: post.likes + 1 } : post
-		))
+	const handleLike = async (postId) => {
+		try {
+			// Toggle like on backend
+			const result = await likesAPI.toggleLike(postId);
+			
+			// Update local state with new like count
+			setBlogPosts(prev => prev.map(post => 
+				post.id === postId ? { ...post, likes: result.count } : post
+			));
+			
+			// Track the interaction
+			trackButtonPress('like', 'blog_post', postId);
+			
+			// Show success notification
+			showNotification('Like updated successfully!', 'success');
+		} catch (error) {
+			console.error('Error toggling like:', error);
+			
+			// Fallback: update locally if backend fails
+			if (error.message.includes('fetch')) {
+				setBlogPosts(prev => prev.map(post => 
+					post.id === postId ? { ...post, likes: post.likes + 1 } : post
+				));
+				showNotification('Like updated (saved locally)', 'success');
+			} else {
+				showNotification('Failed to update like. Please try again.', 'error');
+			}
+		}
 	}
 
-	const addComment = (postId, commentData) => {
-		const newComment = {
-			id: Date.now(),
-			author: commentData.author,
-			content: commentData.content,
-			date: new Date().toLocaleDateString(),
-			time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+	const addComment = async (postId, commentData) => {
+		try {
+			// Add comment to backend
+			const newComment = await commentsAPI.addComment(postId, {
+				author: commentData.author,
+				content: commentData.content,
+				postId: postId
+			});
+			
+			// Update local state with the new comment
+			setBlogPosts(prev => prev.map(post => 
+				post.id === postId 
+					? { ...post, comments: [...post.comments, newComment] }
+					: post
+			));
+			
+			// Track the interaction
+			trackButtonPress('comment', 'blog_post', postId);
+			
+			// Show success notification
+			showNotification('Comment added successfully!', 'success');
+		} catch (error) {
+			console.error('Error adding comment:', error);
+			
+			// Fallback: add locally if backend fails
+			if (error.message.includes('fetch')) {
+				const fallbackComment = {
+					id: Date.now(),
+					author: commentData.author,
+					content: commentData.content,
+					date: new Date().toLocaleDateString(),
+					time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+				};
+				
+				setBlogPosts(prev => prev.map(post => 
+					post.id === postId 
+						? { ...post, comments: [...post.comments, fallbackComment] }
+						: post
+				));
+				
+				showNotification('Comment added (saved locally)', 'success');
+			} else {
+				showNotification('Failed to add comment. Please try again.', 'error');
+			}
 		}
-		
-		setBlogPosts(prev => prev.map(post => 
-			post.id === postId 
-				? { ...post, comments: [...post.comments, newComment] }
-				: post
-		))
 	}
+
+	// Notification helper function
+	const showNotification = (message, type) => {
+		setNotification({ message, type, show: true });
+		setTimeout(() => setNotification({ message: '', type: '', show: false }), 3000);
+	};
 
 	const filteredPosts = selectedCategory === 'all' 
 		? blogPosts 
@@ -126,6 +200,18 @@ export default function Writing() {
 	return (
 		<main>
 			<TopNav />
+			
+			{/* Notification */}
+			{notification.show && (
+				<div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+					notification.type === 'success' 
+						? 'bg-green-500 text-white' 
+						: 'bg-red-500 text-white'
+				}`}>
+					{notification.message}
+				</div>
+			)}
+			
 			<section className="container-section py-16 md:py-24">
 				<h1 className="section-title">Writing & Blog</h1>
 				<p className="section-content mt-4">Thoughts on books, creativity, computing, and the intersection of technology and art.</p>
@@ -151,7 +237,11 @@ export default function Writing() {
 
 				{/* Blog Posts Display */}
 				<div className="space-y-6">
-					{filteredPosts.length === 0 ? (
+					{isLoading ? (
+						<div className="text-center py-12">
+							<p className="text-gray-500 text-lg">Loading posts...</p>
+						</div>
+					) : filteredPosts.length === 0 ? (
 						<div className="text-center py-12">
 							<p className="text-gray-500 text-lg">No posts found in this category.</p>
 						</div>
@@ -257,12 +347,21 @@ export default function Writing() {
 // Comment Form Component
 function CommentForm({ postId, onAddComment }) {
 	const [commentData, setCommentData] = useState({ author: '', content: '' })
+	const [isSubmitting, setIsSubmitting] = useState(false)
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault()
 		if (commentData.author.trim() && commentData.content.trim()) {
-			onAddComment(postId, commentData)
-			setCommentData({ author: '', content: '' })
+			setIsSubmitting(true)
+			try {
+				await onAddComment(postId, commentData)
+				setCommentData({ author: '', content: '' })
+			} catch (error) {
+				console.error('Error submitting comment:', error)
+				// Error is now handled by the parent component
+			} finally {
+				setIsSubmitting(false)
+			}
 		}
 	}
 
@@ -276,6 +375,7 @@ function CommentForm({ postId, onAddComment }) {
 					placeholder="Your name"
 					className="px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
 					required
+					disabled={isSubmitting}
 				/>
 			</div>
 			<textarea
@@ -285,12 +385,18 @@ function CommentForm({ postId, onAddComment }) {
 				rows={3}
 				className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
 				required
+				disabled={isSubmitting}
 			/>
 			<button
 				type="submit"
-				className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+				disabled={isSubmitting}
+				className={`px-4 py-2 rounded transition-colors ${
+					isSubmitting 
+						? 'bg-blue-400 text-white cursor-not-allowed' 
+						: 'bg-blue-600 text-white hover:bg-blue-700'
+				}`}
 			>
-				Post Comment
+				{isSubmitting ? 'Posting...' : 'Post Comment'}
 			</button>
 		</form>
 	)

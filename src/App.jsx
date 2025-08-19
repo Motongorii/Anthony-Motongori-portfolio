@@ -2,8 +2,6 @@ import './App.css'
 import React from 'react'
 import TopNav from './shared/TopNav.jsx'
 import { useAnalyticsInit } from './hooks/useAnalytics'
-import profileImage from '/image/moto G.jpg'
-
 function Section({ id, title, children, className = '' }) {
 	return (
 		<section id={id} className={`container-section py-16 md:py-24 ${className}`}>
@@ -26,9 +24,15 @@ function IconWrapper({ children, className = '' }) {
 }
 
 function HeroImage() {
-	const sources = [profileImage, '/moto G.jpg', '/image/moto G.jpg']
+	const sources = ['/profile-image.jpg', '/moto G.jpg', '/image/moto G.jpg']
 	const [index, setIndex] = React.useState(0)
+	const [imageError, setImageError] = React.useState(false)
 	const src = sources[index] || sources[0]
+	
+	React.useEffect(() => {
+		console.log('HeroImage mounted, trying to load:', src);
+	}, [src]);
+	
 	return (
 		<div className="relative group">
 			{/* Glowing Edge Effect */}
@@ -40,15 +44,31 @@ function HeroImage() {
 			
 			{/* Image Container with Proper Fit */}
 			<div className="relative w-full h-full rounded-3xl p-1">
-				<img
-					src={src}
-					alt="Anthony Motongori portrait"
-					className="w-full h-full object-cover rounded-2xl shadow-2xl group-hover:scale-105 transition-transform duration-700"
-					loading="eager"
-					decoding="async"
-					onError={() => setIndex((i) => (i + 1 < sources.length ? i + 1 : i))}
-					onLoad={() => console.log('Image loaded successfully:', src)}
-				/>
+				{imageError && index >= sources.length - 1 ? (
+					<div className="w-full h-full bg-gray-200 rounded-2xl flex items-center justify-center">
+						<p className="text-gray-500">Image not available</p>
+					</div>
+				) : (
+		<img
+			src={src}
+			alt="Anthony Motongori portrait"
+						className="w-full h-full object-cover rounded-2xl shadow-2xl group-hover:scale-105 transition-transform duration-700"
+			loading="eager"
+			decoding="async"
+						onError={() => {
+							console.log('Image failed to load:', src);
+							if (index < sources.length - 1) {
+								setIndex((i) => i + 1);
+							} else {
+								setImageError(true);
+							}
+						}}
+						onLoad={() => {
+							console.log('Image loaded successfully:', src);
+							setImageError(false);
+						}}
+					/>
+				)}
 			</div>
 			
 			{/* Subtle Overlay */}
@@ -202,9 +222,9 @@ export default function App() {
 							<h1 className="hero-title text-5xl md:text-7xl lg:text-8xl leading-tight">
 								<span className="hero-kicker block text-xl md:text-2xl mb-4 text-[--color-subtle] font-normal">Hello, I'm</span>
 								<span className="bg-gradient-to-r from-brand via-purple-600 to-blue-600 bg-clip-text text-transparent">
-									Anthony Motongori
+							Anthony Motongori
 								</span>
-							</h1>
+						</h1>
 						</div>
 						
 						<p className="text-xl md:text-2xl text-[--color-subtle] leading-relaxed max-w-2xl">
@@ -240,7 +260,7 @@ export default function App() {
 					<div className="hero-panel p-4">
 						<div className="w-full max-w-md mx-auto">
 							<div className="aspect-[4/5] w-full overflow-hidden rounded-3xl">
-								<HeroImage />
+							<HeroImage />
 							</div>
 						</div>
 					</div>
@@ -450,26 +470,26 @@ export default function App() {
 										<p className="text-lg font-medium group-hover:text-green-600 transition-colors">+254 111 449 213</p>
 									</div>
 								</div>
-							</a>
+								</a>
+							</div>
 						</div>
-					</div>
 					
 					<div className="card p-8">
-						<ContactForm />
+							<ContactForm />
+						</div>
 					</div>
-				</div>
 
 				{/* Social Links */}
 				<div className="mt-16 text-center">
 					<div className="flex flex-wrap justify-center items-center gap-6 md:gap-8">
 						<SocialLink href="https://web.facebook.com/MotongoriTheSpokesonna" label="Facebook" Icon={FacebookIcon} />
 						<SocialLink href="https://www.instagram.com/motongori_the_spokesonna/" label="Instagram" Icon={InstagramIcon} />
-						<SocialLink href="https://www.tiktok.com/@spokesonna?lang=en" label="TikTok" Icon={TikTokIcon} />
+														<SocialLink href="https://www.tiktok.com/@spokesonna?lang=en" label="TikTok" Icon={TikTokIcon} />
 						<SocialLink href="#" label="LinkedIn" Icon={LinkedInIcon} />
 						<SocialLink href="https://x.com/Spokesonna" label="X" Icon={XIcon} />
 						<SocialLink href="https://www.youtube.com/@spokesonna" label="YouTube" Icon={YouTubeIcon} />
 					</div>
-					
+
 					<p className="text-[--color-subtle] text-center mt-8">© {new Date().getFullYear()} Anthony Motongori. All rights reserved.</p>
 				</div>
 			</footer>
