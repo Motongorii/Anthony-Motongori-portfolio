@@ -210,7 +210,7 @@ export default function App() {
 						</p>
 						
 						<div className="flex flex-col sm:flex-row gap-4">
-							<a href="/work" className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
+							<a href="/#/work" className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl">
 								View My Work
 							</a>
 							<a href="/#contact" className="inline-flex items-center justify-center px-8 py-4 rounded-xl ring-2 ring-[--color-border] text-[--color-text] hover:bg-[--color-surface-muted] hover:ring-brand transition-all duration-300 text-lg font-medium">
@@ -377,7 +377,7 @@ export default function App() {
 			<Section id="work" title="Selected Work" className="bg-gradient-to-br from-[--color-surface-muted] to-[--color-surface]">
 				<div className="text-center mb-12">
 					<p className="text-lg text-[--color-subtle] mb-6">Explore more on the dedicated page.</p>
-					<a className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300" href="/work">
+					<a className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300" href="/#/work">
 						View All Projects
 					</a>
 				</div>
@@ -387,7 +387,7 @@ export default function App() {
 			<Section id="writing" title="Writing & Blog">
 				<div className="text-center mb-12">
 					<p className="text-lg text-[--color-subtle] mb-6">Read essays and articles on the dedicated page.</p>
-					<a className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300" href="/writing">
+					<a className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300" href="/#/writing">
 						Read My Writing
 					</a>
 				</div>
@@ -397,7 +397,7 @@ export default function App() {
 			<Section id="spoken-word" title="Spoken Word" className="bg-gradient-to-br from-[--color-surface] to-[--color-surface-muted]">
 				<div className="text-center mb-12">
 					<p className="text-lg text-[--color-subtle] mb-6">Listen to performances on the dedicated page.</p>
-					<a className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300" href="/spoken-word">
+					<a className="btn-primary px-8 py-4 rounded-xl text-lg font-medium hover:scale-105 transition-transform duration-300" href="/#/spoken-word">
 						Listen to Performances
 					</a>
 				</div>

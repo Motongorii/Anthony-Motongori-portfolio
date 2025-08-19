@@ -5,11 +5,11 @@ export default function TopNav() {
 		{ href: '/', label: 'Home', match: /^\/$/ },
 		{ href: '/#about', label: 'About', match: null },
 		{ href: '/#skills', label: 'Expertise', match: null },
-		{ href: '/work', label: 'Work', match: /^\/work/ },
-		{ href: '/writing', label: 'Writing', match: /^\/writing/ },
-		{ href: '/spoken-word', label: 'Spoken Word', match: /^\/spoken-word/ },
+		{ href: '/#/work', label: 'Work', match: /^\/#\/work/ },
+		{ href: '/#/writing', label: 'Writing', match: /^\/#\/writing/ },
+		{ href: '/#/spoken-word', label: 'Spoken Word', match: /^\/#\/spoken-word/ },
 	]
-	const path = typeof window !== 'undefined' ? window.location.pathname : '/'
+	const path = typeof window !== 'undefined' ? window.location.hash || '/' : '/'
 	return (
 		<header className="topbar sticky top-0 z-50">
 			<div className="container-section">
@@ -33,7 +33,7 @@ export default function TopNav() {
 					<div className="flex items-center gap-3">
 						{/* Hidden Admin Link - Completely invisible to regular visitors */}
 						<a 
-							href="/admin" 
+							href="/#/admin" 
 							className="absolute opacity-0 pointer-events-none select-none"
 							style={{ fontSize: '1px', color: 'transparent' }}
 							title="Admin Access"
