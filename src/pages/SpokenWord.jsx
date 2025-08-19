@@ -1,8 +1,12 @@
 import '../App.css'
 import React from 'react'
 import TopNav from '../shared/TopNav.jsx'
+import { usePageView } from '../hooks/useAnalytics'
 
 export default function SpokenWord() {
+	// Track page view
+	usePageView('spoken-word');
+	
 	return (
 		<main>
 			<TopNav />

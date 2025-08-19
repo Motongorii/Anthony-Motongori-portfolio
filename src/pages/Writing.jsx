@@ -1,8 +1,13 @@
 import '../App.css'
 import React, { useState } from 'react'
 import TopNav from '../shared/TopNav.jsx'
+import { usePageView, useInteractionTracking } from '../hooks/useAnalytics'
 
 export default function Writing() {
+	// Track page view and interactions
+	usePageView('writing');
+	const { trackClick, trackButtonPress } = useInteractionTracking();
+	
 	const [selectedCategory, setSelectedCategory] = useState('all')
 	const [blogPosts, setBlogPosts] = useState([
 		{

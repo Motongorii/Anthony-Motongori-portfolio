@@ -1,6 +1,7 @@
 import '../App.css'
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import TopNav from '../shared/TopNav.jsx'
+import { connectToAnalytics } from '../utils/analytics'
 
 export default function AdminDashboard() {
 	const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -57,6 +58,18 @@ export default function AdminDashboard() {
 		featured: false
 	})
 
+	// Analytics state
+	const [analytics, setAnalytics] = useState({
+		pageViews: { hourly: 0, daily: 0, total: 0 },
+		interactions: 0,
+		comments: 0,
+		likes: { hourly: 0, daily: 0, total: 0 },
+		topPages: [],
+		recentActivity: []
+	})
+	const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false)
+	const [socket, setSocket] = useState(null)
+
 	const handleAdminLogin = (e) => {
 		e.preventDefault()
 		if (password === ADMIN_PASSWORD) {
@@ -73,7 +86,130 @@ export default function AdminDashboard() {
 		setIsAuthenticated(false)
 		setPassword('')
 		setLoginError('')
+		// Disconnect socket
+		if (socket) {
+			socket.disconnect()
+			setSocket(null)
+		}
 	}
+
+	// Analytics functions
+	const fetchAnalytics = async () => {
+		setIsLoadingAnalytics(true)
+		try {
+			const response = await fetch('http://localhost:3001/api/analytics/real-time', {
+				headers: {
+					'password': 'admin123'
+				}
+			})
+			
+			if (response.ok) {
+				const data = await response.json()
+				setAnalytics(data.data)
+			}
+		} catch (error) {
+			console.error('Error fetching analytics:', error)
+		} finally {
+			setIsLoadingAnalytics(false)
+		}
+	}
+
+	const fetchDashboardData = async () => {
+		try {
+			const [analyticsRes, topPagesRes, recentActivityRes] = await Promise.all([
+				fetch('http://localhost:3001/api/analytics/dashboard', {
+					headers: { 'password': 'admin123' }
+				}),
+				fetch('http://localhost:3001/api/analytics/top-pages', {
+					headers: { 'password': 'admin123' }
+				}),
+				fetch('http://localhost:3001/api/analytics/recent-activity', {
+					headers: { 'password': 'admin123' }
+				})
+			])
+
+			if (analyticsRes.ok) {
+				const analyticsData = await analyticsRes.json()
+				// Safely update analytics with proper data structure
+				if (analyticsData.data) {
+					setAnalytics(prev => ({
+						...prev,
+						pageViews: {
+							hourly: analyticsData.data.pageViews?.hourly || 0,
+							daily: analyticsData.data.pageViews?.daily || 0,
+							total: analyticsData.data.pageViews?.total || 0
+						},
+						interactions: analyticsData.data.interactions || 0,
+						comments: analyticsData.data.comments || 0,
+						likes: {
+							hourly: analyticsData.data.likes?.hourly || 0,
+							daily: analyticsData.data.likes?.daily || 0,
+							total: analyticsData.data.likes?.total || 0
+						}
+					}))
+				}
+			}
+
+			if (topPagesRes.ok) {
+				const topPagesData = await topPagesRes.json()
+				// Ensure topPages is an array and has the expected structure
+				if (topPagesData.data && Array.isArray(topPagesData.data)) {
+					const formattedTopPages = topPagesData.data.map(page => ({
+						page: page.page || page._id || 'Unknown',
+						views: page.views || page.totalInteractions || 0,
+						percentage: page.percentage || 0
+					}))
+					setAnalytics(prev => ({ ...prev, topPages: formattedTopPages }))
+				} else {
+					setAnalytics(prev => ({ ...prev, topPages: [] }))
+				}
+			}
+
+			if (recentActivityRes.ok) {
+				const recentActivityData = await recentActivityRes.json()
+				// Ensure recentActivity is an array and has the expected structure
+				if (recentActivityData.data && Array.isArray(recentActivityData.data)) {
+					const formattedRecentActivity = recentActivityData.data.map(activity => ({
+						type: activity.type || 'unknown',
+						description: activity.description || 'User activity',
+						timestamp: activity.timestamp || new Date().toISOString()
+					}))
+					setAnalytics(prev => ({ ...prev, recentActivity: formattedRecentActivity }))
+				} else {
+					setAnalytics(prev => ({ ...prev, recentActivity: [] }))
+				}
+			}
+		} catch (error) {
+			console.error('Error fetching dashboard data:', error)
+		}
+	}
+
+	// Initialize analytics connection
+	useEffect(() => {
+		if (isAuthenticated) {
+			// Connect to analytics backend
+			const analyticsSocket = connectToAnalytics('admin123')
+			setSocket(analyticsSocket)
+
+			// Fetch initial data
+			fetchDashboardData()
+
+			// Set up real-time updates
+			const handleAnalyticsUpdate = (event) => {
+				setAnalytics(prev => ({ ...prev, ...event.detail }))
+			}
+
+			window.addEventListener('analytics-update', handleAnalyticsUpdate)
+
+			// Cleanup
+			return () => {
+				window.removeEventListener('analytics-update', handleAnalyticsUpdate)
+				if (analyticsSocket) {
+					analyticsSocket.disconnect()
+				}
+			}
+		}
+	}, [isAuthenticated])
 
 	// SpokenWord functions
 	const handleFileUpload = (files) => {
@@ -302,6 +438,16 @@ export default function AdminDashboard() {
 						}`}
 					>
 						Writing/Blog Management
+					</button>
+					<button
+						onClick={() => setActiveTab('analytics')}
+						className={`px-4 py-2 rounded-md transition-colors ${
+							activeTab === 'analytics'
+								? 'bg-blue-600 text-white'
+								: 'text-gray-600 hover:text-gray-900'
+						}`}
+					>
+						📊 Analytics Dashboard
 					</button>
 				</div>
 
@@ -762,6 +908,175 @@ export default function AdminDashboard() {
 										)}
 									</div>
 								))}
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Analytics Tab */}
+				{activeTab === 'analytics' && (
+					<div className="space-y-8">
+						<div className="card">
+							<div className="flex justify-between items-center mb-6">
+								<h2 className="text-2xl font-bold text-gray-900">📊 Real-Time Analytics Dashboard</h2>
+								<button
+									onClick={fetchDashboardData}
+									disabled={isLoadingAnalytics}
+									className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+								>
+									{isLoadingAnalytics ? '🔄 Loading...' : '🔄 Refresh Data'}
+								</button>
+							</div>
+
+							{/* Stats Grid */}
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+								<div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl text-white">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="text-blue-100 text-sm font-medium">Total Page Views</p>
+											<p className="text-3xl font-bold">{analytics.pageViews.total}</p>
+										</div>
+										<div className="text-blue-200 text-4xl">👁️</div>
+									</div>
+									<div className="mt-2 text-blue-100 text-sm">
+										Today: {analytics.pageViews.daily} • This Hour: {analytics.pageViews.hourly}
+									</div>
+								</div>
+
+								<div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-white">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="text-green-100 text-sm font-medium">User Interactions</p>
+											<p className="text-3xl font-bold">{analytics.interactions}</p>
+										</div>
+										<div className="text-green-200 text-4xl">🖱️</div>
+									</div>
+									<div className="mt-2 text-green-100 text-sm">
+										Clicks, scrolls, and form submissions
+									</div>
+								</div>
+
+								<div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl text-white">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="text-purple-100 text-sm font-medium">Total Likes</p>
+											<p className="text-3xl font-bold">{analytics.likes.total}</p>
+										</div>
+										<div className="text-purple-200 text-4xl">👍</div>
+									</div>
+									<div className="mt-2 text-purple-100 text-sm">
+										Today: {analytics.likes.daily} • This Hour: {analytics.likes.hourly}
+									</div>
+								</div>
+
+								<div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-xl text-white">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="text-orange-100 text-sm font-medium">Comments</p>
+											<p className="text-3xl font-bold">{analytics.comments}</p>
+										</div>
+										<div className="text-orange-200 text-4xl">💬</div>
+									</div>
+									<div className="mt-2 text-orange-100 text-sm">
+										Total comments across all posts
+									</div>
+								</div>
+							</div>
+
+							{/* Top Pages */}
+							{analytics.topPages && analytics.topPages.length > 0 && (
+								<div className="mb-8">
+									<h3 className="text-xl font-semibold text-gray-900 mb-4">🔥 Top Performing Pages</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										{analytics.topPages.slice(0, 6).map((page, index) => (
+											<div key={page.page || index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+												<div className="flex items-center justify-between">
+													<div className="flex items-center space-x-3">
+														<span className="text-2xl">
+															{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}
+														</span>
+														<div>
+															<p className="font-medium text-gray-900">{page.page || 'Unknown Page'}</p>
+															<p className="text-sm text-gray-600">{page.views || 0} views</p>
+														</div>
+													</div>
+													<div className="text-right">
+														<p className="text-lg font-bold text-blue-600">{page.percentage || 0}%</p>
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Recent Activity */}
+							{analytics.recentActivity && analytics.recentActivity.length > 0 && (
+								<div>
+									<h3 className="text-xl font-semibold text-gray-900 mb-4">📈 Recent Activity</h3>
+									<div className="space-y-3">
+										{analytics.recentActivity.slice(0, 10).map((activity, index) => (
+											<div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+												<div className="text-2xl">
+													{activity.type === 'page_view' ? '👁️' : 
+													 activity.type === 'interaction' ? '🖱️' : 
+													 activity.type === 'like' ? '👍' : 
+													 activity.type === 'comment' ? '💬' : '📊'}
+												</div>
+												<div className="flex-1">
+													<p className="text-sm font-medium text-gray-900">
+														{activity.description || 'User activity'}
+													</p>
+													<p className="text-xs text-gray-600">
+														{activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Just now'}
+													</p>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* No Data Message */}
+							{(!analytics.topPages || analytics.topPages.length === 0) && 
+							 (!analytics.recentActivity || analytics.recentActivity.length === 0) && (
+								<div className="mt-8 p-8 bg-blue-50 rounded-lg border border-blue-200 text-center">
+									<div className="text-4xl mb-4">📊</div>
+									<h3 className="text-lg font-medium text-blue-900 mb-2">No Analytics Data Yet</h3>
+									<p className="text-blue-700 mb-4">
+										Your analytics dashboard will show data once visitors start interacting with your portfolio.
+									</p>
+									<button
+										onClick={fetchDashboardData}
+										className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+									>
+										🔄 Refresh Data
+									</button>
+								</div>
+							)}
+
+							{/* Debug Info (Remove in production) */}
+							<div className="mt-8 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+								<h3 className="text-lg font-medium text-yellow-900 mb-2">🔍 Debug Info</h3>
+								<details className="text-sm">
+									<summary className="cursor-pointer text-yellow-700">Click to see raw analytics data</summary>
+									<pre className="mt-2 p-2 bg-yellow-100 rounded text-xs overflow-auto max-h-40">
+										{JSON.stringify(analytics, null, 2)}
+									</pre>
+								</details>
+							</div>
+
+							{/* Connection Status */}
+							<div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+								<div className="flex items-center space-x-3">
+									<div className={`w-3 h-3 rounded-full ${socket ? 'bg-green-500' : 'bg-red-500'}`}></div>
+									<span className="text-sm font-medium text-gray-700">
+										{socket ? '🟢 Connected to Analytics Backend' : '🔴 Disconnected from Analytics Backend'}
+									</span>
+								</div>
+								<p className="text-xs text-gray-600 mt-1">
+									Real-time updates are {socket ? 'enabled' : 'disabled'}
+								</p>
 							</div>
 						</div>
 					</div>

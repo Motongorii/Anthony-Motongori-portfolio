@@ -1,6 +1,7 @@
 import './App.css'
 import React from 'react'
 import TopNav from './shared/TopNav.jsx'
+import { useAnalyticsInit } from './hooks/useAnalytics'
 
 function Section({ id, title, children, className = '' }) {
 	return (
@@ -175,6 +176,9 @@ function ContactForm() {
 }
 
 export default function App() {
+	// Initialize analytics tracking
+	useAnalyticsInit();
+	
 	return (
 		<main id="home" className="min-h-screen">
 			<TopNav />
